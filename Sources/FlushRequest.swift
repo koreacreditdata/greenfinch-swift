@@ -8,10 +8,21 @@
 
 import Foundation
 
-enum FlushType: String {
-    case events = "/track/"
-    case people = "/engage/"
-    case groups = "/groups/"
+enum FlushType {
+    case events(serviceName: String)
+    case people
+    case groups
+    
+    var path: String {
+        switch self {
+        case .events(let serviceName):
+            return "/api/publish/\(serviceName)"
+        case .people:
+            return "/engage/"
+        case .groups:
+            return "/groups/"
+        }
+    }
 }
 
 class FlushRequest: Network {
@@ -22,6 +33,7 @@ class FlushRequest: Network {
     func sendRequest(_ requestData: String,
                      type: FlushType,
                      useIP: Bool,
+                     isDebugMode: Bool,
                      completion: @escaping (Bool) -> Void) {
 
         let responseParser: (Data) -> Int? = { data in
@@ -32,27 +44,26 @@ class FlushRequest: Network {
             return nil
         }
 
-        let requestBody = "ip=\(useIP ? 1 : 0)&data=\(requestData)"
-            .data(using: String.Encoding.utf8)
-
-        let resource = Network.buildResource(path: type.rawValue,
+        let requestBody = requestData.data(using: String.Encoding.utf8)
+        
+        let resource = Network.buildResource(path: type.path,
                                              method: .post,
                                              requestBody: requestBody,
                                              headers: ["Accept-Encoding": "gzip"],
                                              parse: responseParser)
 
-        flushRequestHandler(BasePath.getServerURL(identifier: basePathIdentifier),
+        flushRequestHandler(BasePath.getServerURL(isDebug: isDebugMode),
                             resource: resource,
                             completion: { success in
                                 completion(success)
         })
     }
-
+    
     private func flushRequestHandler(_ base: String,
                                      resource: Resource<Int>,
                                      completion: @escaping (Bool) -> Void) {
 
-        Network.apiRequest(base: base, resource: resource,
+        Network.apiRequest(base: base, resource: resource, token: token, 
             failure: { (reason, _, response) in
                 self.networkConsecutiveFailures += 1
                 self.updateRetryDelay(response)

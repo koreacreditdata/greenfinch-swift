@@ -123,4 +123,13 @@ class JSONHandler {
     private class func isInvalidNumber(_ num: NSNumber) -> Bool {
         return  num.doubleValue.isInfinite ||  num.doubleValue.isNaN
     }
+    
+    class func encodeJSONString(_ obj: MPObjectToParse) -> String? {
+        guard let data: Data = serializeJSONObject(obj) else { return nil }
+        guard let jsonString = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        
+        return jsonString
+    }
 }
